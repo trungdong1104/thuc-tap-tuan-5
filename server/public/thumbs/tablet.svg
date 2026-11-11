@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect x="12" y="10" width="40" height="44" rx="4" fill="#E2E8F0" stroke="#94A3B8" stroke-width="1.5"/>
+  <rect x="15" y="13" width="34" height="38" rx="2.5" fill="url(#ipadgrad)"/>
+  <defs>
+    <linearGradient id="ipadgrad" x1="15" y1="13" x2="49" y2="51" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EC4899"/>
+      <stop offset="0.5" stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+  </defs>
+</svg>
