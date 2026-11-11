@@ -8,24 +8,36 @@ import multer from 'multer';
 import { createInitialSeed, resolveProductStatus } from './data/seed.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const IS_VERCEL = Boolean(process.env.VERCEL);
 const DATA_DIR = path.join(__dirname, 'data');
-const DB_PATH = path.join(DATA_DIR, 'db.json');
-const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const DB_PATH = IS_VERCEL ? '/tmp/pm-db.json' : path.join(DATA_DIR, 'db.json');
+const UPLOADS_DIR = IS_VERCEL ? '/tmp/pm-uploads' : path.join(__dirname, 'uploads');
 const PUBLIC_DIR = path.join(__dirname, 'public');
+const THUMBS_DIR = path.join(PUBLIC_DIR, 'thumbs');
 
 const PORT = Number(process.env.API_PORT || 3001);
+const TOKEN_SECRET =
+  process.env.SESSION_SECRET ||
+  crypto.createHash('sha256').update('pm-session-signing-key-v1').digest('hex');
 
-fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!IS_VERCEL) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 function loadDb() {
   if (!fs.existsSync(DB_PATH)) {
     const initial = createInitialSeed();
+    initial.revokedTokens = [];
     fs.writeFileSync(DB_PATH, JSON.stringify(initial, null, 2), 'utf8');
     return initial;
   }
   const raw = fs.readFileSync(DB_PATH, 'utf8');
-  return JSON.parse(raw);
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed.revokedTokens)) {
+    parsed.revokedTokens = [];
+  }
+  return parsed;
 }
 
 function saveDb(db) {
@@ -53,11 +65,21 @@ function sendError(res, statusCode, code, message, details = null) {
 
 function resolvePublicUrl(req, maybeRelativeUrl) {
   if (!maybeRelativeUrl) return '';
-  if (maybeRelativeUrl.startsWith('http://') || maybeRelativeUrl.startsWith('https://') || maybeRelativeUrl.startsWith('data:')) {
+  if (
+    maybeRelativeUrl.startsWith('http://') ||
+    maybeRelativeUrl.startsWith('https://') ||
+    maybeRelativeUrl.startsWith('data:')
+  ) {
     return maybeRelativeUrl;
   }
+  const normalized = maybeRelativeUrl.startsWith('/assets/thumbs/')
+    ? maybeRelativeUrl.replace('/assets/thumbs/', '/api/thumbs/')
+    : maybeRelativeUrl;
+  if (IS_VERCEL) {
+    return normalized.startsWith('/') ? normalized : `/${normalized}`;
+  }
   const origin = `${req.protocol}://${req.get('host')}`;
-  return `${origin}${maybeRelativeUrl.startsWith('/') ? '' : '/'}${maybeRelativeUrl}`;
+  return `${origin}${normalized.startsWith('/') ? '' : '/'}${normalized}`;
 }
 
 function enrichProduct(req, db, product) {
@@ -83,30 +105,68 @@ function extractBearerToken(req) {
   return header.slice('Bearer '.length).trim();
 }
 
+function signTokenPayload(payload) {
+  const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const signature = crypto
+    .createHmac('sha256', TOKEN_SECRET)
+    .update(encoded)
+    .digest('base64url');
+  return `pm_sess_${encoded}.${signature}`;
+}
+
+function verifySignedToken(token) {
+  if (!token || !token.startsWith('pm_sess_')) return null;
+  const raw = token.slice('pm_sess_'.length);
+  const parts = raw.split('.');
+  if (parts.length !== 2) return null;
+  const [encoded, signature] = parts;
+  const expected = crypto
+    .createHmac('sha256', TOKEN_SECRET)
+    .update(encoded)
+    .digest('base64url');
+  if (signature !== expected) return null;
+  try {
+    return JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
 function createSessionRecord(username = 'intern-react', fullName = 'Thực tập sinh React') {
-  const token = `pm_sess_${crypto.randomBytes(18).toString('hex')}`;
+  const createdAt = new Date().toISOString();
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const user = {
+    id: `usr-${crypto.createHash('sha1').update(username).digest('hex').slice(0, 8)}`,
+    username,
+    fullName,
+    role: 'ADMIN',
+  };
+  const token = signTokenPayload({
+    user,
+    expiresAt,
+    createdAt,
+    nonce: crypto.randomBytes(6).toString('hex'),
+  });
   return {
     token,
-    user: {
-      id: `usr-${crypto.createHash('sha1').update(username).digest('hex').slice(0, 8)}`,
-      username,
-      fullName,
-      role: 'ADMIN',
-    },
+    user,
     expiresAt,
-    createdAt: new Date().toISOString(),
+    createdAt,
   };
 }
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname || '.png').toLowerCase();
-    const safeExt = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg'].includes(ext) ? ext : '.png';
-    cb(null, `prd-${Date.now()}-${crypto.randomBytes(4).toString('hex')}${safeExt}`);
-  },
-});
+const storage = IS_VERCEL
+  ? multer.memoryStorage()
+  : multer.diskStorage({
+      destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+      filename: (_req, file, cb) => {
+        const ext = path.extname(file.originalname || '.png').toLowerCase();
+        const safeExt = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg'].includes(ext)
+          ? ext
+          : '.png';
+        cb(null, `prd-${Date.now()}-${crypto.randomBytes(4).toString('hex')}${safeExt}`);
+      },
+    });
 
 const upload = multer({
   storage,
@@ -122,38 +182,101 @@ const upload = multer({
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '4mb' }));
+app.use('/api/thumbs', express.static(THUMBS_DIR));
+app.use('/api/uploads', express.static(UPLOADS_DIR));
 app.use('/assets', express.static(PUBLIC_DIR));
 app.use('/uploads', express.static(UPLOADS_DIR));
 
-// Optional simulated error middleware for testing resilience & error states
 app.use((req, res, next) => {
   const sim = req.headers['x-simulate-error'];
   if (!sim) return next();
   const code = String(sim);
-  if (code === '401') return sendError(res, 401, 'UNAUTHORIZED', 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn (mô phỏng 401).');
-  if (code === '403') return sendError(res, 403, 'FORBIDDEN', 'Bạn không có quyền thực hiện thao tác này (mô phỏng 403).');
-  if (code === '404') return sendError(res, 404, 'NOT_FOUND', 'Không tìm thấy tài nguyên yêu cầu (mô phỏng 404).');
-  if (code === '500') return sendError(res, 500, 'INTERNAL_SERVER_ERROR', 'Lỗi máy chủ nội bộ (mô phỏng 500).');
+  if (code === '401') {
+    return sendError(
+      res,
+      401,
+      'UNAUTHORIZED',
+      'Phiên đăng nhập không hợp lệ hoặc đã hết hạn (mô phỏng 401).'
+    );
+  }
+  if (code === '403') {
+    return sendError(
+      res,
+      403,
+      'FORBIDDEN',
+      'Bạn không có quyền thực hiện thao tác này (mô phỏng 403).'
+    );
+  }
+  if (code === '404') {
+    return sendError(res, 404, 'NOT_FOUND', 'Không tìm thấy tài nguyên yêu cầu (mô phỏng 404).');
+  }
+  if (code === '500') {
+    return sendError(
+      res,
+      500,
+      'INTERNAL_SERVER_ERROR',
+      'Lỗi máy chủ nội bộ (mô phỏng 500).'
+    );
+  }
   return next();
 });
 
 function requireAuth(req, res, next) {
   const token = extractBearerToken(req);
   if (!token) {
-    return sendError(res, 401, 'UNAUTHORIZED', 'Thiếu Authorization Bearer token. Vui lòng khởi tạo phiên làm việc.');
+    return sendError(
+      res,
+      401,
+      'UNAUTHORIZED',
+      'Thiếu Authorization Bearer token. Vui lòng khởi tạo phiên làm việc.'
+    );
   }
+
   const db = loadDb();
-  const session = db.sessions.find((s) => s.token === token);
-  if (!session) {
-    return sendError(res, 401, 'INVALID_TOKEN', 'Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.');
+  if (db.revokedTokens.includes(token)) {
+    return sendError(
+      res,
+      401,
+      'TOKEN_REVOKED',
+      'Phiên làm việc đã đăng xuất. Vui lòng đăng nhập lại.'
+    );
   }
-  if (new Date(session.expiresAt).getTime() < Date.now()) {
+
+  const verified = verifySignedToken(token);
+  if (verified) {
+    if (new Date(verified.expiresAt).getTime() < Date.now()) {
+      return sendError(
+        res,
+        401,
+        'TOKEN_EXPIRED',
+        'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+      );
+    }
+    req.session = { token, ...verified };
+    return next();
+  }
+
+  const legacySession = db.sessions.find((s) => s.token === token);
+  if (!legacySession) {
+    return sendError(
+      res,
+      401,
+      'INVALID_TOKEN',
+      'Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.'
+    );
+  }
+  if (new Date(legacySession.expiresAt).getTime() < Date.now()) {
     db.sessions = db.sessions.filter((s) => s.token !== token);
     saveDb(db);
-    return sendError(res, 401, 'TOKEN_EXPIRED', 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+    return sendError(
+      res,
+      401,
+      'TOKEN_EXPIRED',
+      'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+    );
   }
-  req.session = session;
+  req.session = legacySession;
   return next();
 }
 
@@ -161,7 +284,6 @@ app.get('/api/health', (_req, res) => {
   return sendSuccess(res, { status: 'UP', version: '1.0.0' }, 'API Server đang hoạt động');
 });
 
-// Auth endpoints
 app.post('/api/auth/session', (_req, res) => {
   const db = loadDb();
   const session = createSessionRecord('intern-react', 'Thực tập sinh React');
@@ -200,6 +322,12 @@ app.post('/api/auth/logout', (req, res) => {
   if (token) {
     const db = loadDb();
     db.sessions = db.sessions.filter((s) => s.token !== token);
+    if (!db.revokedTokens.includes(token)) {
+      db.revokedTokens.push(token);
+      if (db.revokedTokens.length > 100) {
+        db.revokedTokens = db.revokedTokens.slice(-100);
+      }
+    }
     saveDb(db);
   }
   return sendSuccess(res, { loggedOut: true }, 'Đã đăng xuất khỏi phiên làm việc');
@@ -209,7 +337,6 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
   return sendSuccess(res, req.session, 'Thông tin phiên hiện tại');
 });
 
-// Upload endpoint
 app.post('/api/uploads', requireAuth, (req, res) => {
   upload.single('file')(req, res, (err) => {
     if (err) {
@@ -218,7 +345,25 @@ app.post('/api/uploads', requireAuth, (req, res) => {
     if (!req.file) {
       return sendError(res, 400, 'FILE_REQUIRED', 'Không tìm thấy tệp hình ảnh được gửi lên.');
     }
-    const relativeUrl = `/uploads/${req.file.filename}`;
+
+    if (IS_VERCEL && req.file.buffer) {
+      const dataUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+      return sendSuccess(
+        res,
+        {
+          url: dataUrl,
+          relativeUrl: dataUrl,
+          filename: req.file.originalname,
+          originalName: req.file.originalname,
+          size: req.file.size,
+          mimeType: req.file.mimetype,
+        },
+        'Tải lên hình ảnh thành công',
+        201
+      );
+    }
+
+    const relativeUrl = `/api/uploads/${req.file.filename}`;
     return sendSuccess(
       res,
       {
@@ -235,7 +380,6 @@ app.post('/api/uploads', requireAuth, (req, res) => {
   });
 });
 
-// Category endpoints
 app.get('/api/categories', (req, res) => {
   const db = loadDb();
   const search = normalizeVietnamese(req.query.search);
@@ -252,15 +396,19 @@ app.get('/api/categories', (req, res) => {
     );
   }
 
-  return sendSuccess(res, {
-    items,
-    meta: {
-      page: 1,
-      limit: items.length || 10,
-      totalItems: items.length,
-      totalPages: 1,
+  return sendSuccess(
+    res,
+    {
+      items,
+      meta: {
+        page: 1,
+        limit: items.length || 10,
+        totalItems: items.length,
+        totalPages: 1,
+      },
     },
-  }, 'Lấy danh sách danh mục thành công');
+    'Lấy danh sách danh mục thành công'
+  );
 });
 
 app.get('/api/categories/:id', (req, res) => {
@@ -291,7 +439,10 @@ app.post('/api/categories', requireAuth, (req, res) => {
     return sendError(res, 409, 'DUPLICATE_CATEGORY', 'Danh mục này đã tồn tại.');
   }
   const now = new Date().toISOString();
-  const slug = normalizeVietnamese(trimmedName).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'category';
+  const slug =
+    normalizeVietnamese(trimmedName)
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || 'category';
   const newCategory = {
     id: `cat-${crypto.randomBytes(4).toString('hex')}`,
     name: trimmedName,
@@ -322,7 +473,10 @@ app.put('/api/categories/:id', requireAuth, (req, res) => {
   const updated = {
     ...current,
     name: updatedName,
-    slug: normalizeVietnamese(updatedName).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || current.slug,
+    slug:
+      normalizeVietnamese(updatedName)
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || current.slug,
     description: description !== undefined ? String(description).trim() : current.description,
     updatedAt: new Date().toISOString(),
   };
@@ -355,7 +509,6 @@ app.delete('/api/categories/:id', requireAuth, (req, res) => {
   return sendSuccess(res, { id: req.params.id }, 'Xóa danh mục thành công');
 });
 
-// Product stats endpoint
 app.get('/api/products/stats', (req, res) => {
   const db = loadDb();
   const products = db.products.map((p) => enrichProduct(req, db, p));
@@ -369,20 +522,23 @@ app.get('/api/products/stats', (req, res) => {
     count: products.filter((p) => p.categoryId === cat.id).length,
   }));
 
-  return sendSuccess(res, {
-    totalProducts: products.length,
-    inStockCount,
-    lowStockCount,
-    outOfStockCount,
-    totalInventoryValue,
-    categoryBreakdown,
-    recentProducts: [...products]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5),
-  }, 'Lấy thống kê sản phẩm thành công');
+  return sendSuccess(
+    res,
+    {
+      totalProducts: products.length,
+      inStockCount,
+      lowStockCount,
+      outOfStockCount,
+      totalInventoryValue,
+      categoryBreakdown,
+      recentProducts: [...products]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5),
+    },
+    'Lấy thống kê sản phẩm thành công'
+  );
 });
 
-// Product CRUD endpoints
 app.get('/api/products', (req, res) => {
   const db = loadDb();
   const search = normalizeVietnamese(req.query.search);
@@ -430,22 +586,31 @@ app.get('/api/products', (req, res) => {
   const startIndex = (safePage - 1) * limit;
   const items = filtered.slice(startIndex, startIndex + limit);
 
-  return sendSuccess(res, {
-    items,
-    meta: {
-      page: safePage,
-      limit,
-      totalItems,
-      totalPages,
+  return sendSuccess(
+    res,
+    {
+      items,
+      meta: {
+        page: safePage,
+        limit,
+        totalItems,
+        totalPages,
+      },
     },
-  }, 'Lấy danh sách sản phẩm thành công');
+    'Lấy danh sách sản phẩm thành công'
+  );
 });
 
 app.get('/api/products/:id', (req, res) => {
   const db = loadDb();
   const product = db.products.find((p) => p.id === req.params.id);
   if (!product) {
-    return sendError(res, 404, 'PRODUCT_NOT_FOUND', `Không tìm thấy sản phẩm với mã "${req.params.id}".`);
+    return sendError(
+      res,
+      404,
+      'PRODUCT_NOT_FOUND',
+      `Không tìm thấy sản phẩm với mã "${req.params.id}".`
+    );
   }
   return sendSuccess(res, enrichProduct(req, db, product), 'Lấy chi tiết sản phẩm thành công');
 });
@@ -466,7 +631,13 @@ function validateProductPayload(db, payload, isPartial = false) {
   }
   if (!isPartial || payload.price !== undefined) {
     const price = Number(payload.price);
-    if (payload.price === '' || payload.price === undefined || payload.price === null || Number.isNaN(price) || price < 0) {
+    if (
+      payload.price === '' ||
+      payload.price === undefined ||
+      payload.price === null ||
+      Number.isNaN(price) ||
+      price < 0
+    ) {
       errors.price = 'Giá sản phẩm phải là số lớn hơn hoặc bằng 0.';
     }
   }
@@ -487,11 +658,11 @@ function validateProductPayload(db, payload, isPartial = false) {
 }
 
 const DEFAULT_THUMB_BY_CATEGORY = {
-  'cat-phone': '/assets/thumbs/phone.svg',
-  'cat-laptop': '/assets/thumbs/laptop.svg',
-  'cat-accessory': '/assets/thumbs/accessory.svg',
-  'cat-tablet': '/assets/thumbs/tablet.svg',
-  'cat-watch': '/assets/thumbs/watch.svg',
+  'cat-phone': '/api/thumbs/phone.svg',
+  'cat-laptop': '/api/thumbs/laptop.svg',
+  'cat-accessory': '/api/thumbs/accessory.svg',
+  'cat-tablet': '/api/thumbs/tablet.svg',
+  'cat-watch': '/api/thumbs/watch.svg',
 };
 
 app.post('/api/products', requireAuth, (req, res) => {
@@ -505,7 +676,7 @@ app.post('/api/products', requireAuth, (req, res) => {
   const quantity = Number(body.quantity);
   const price = Number(body.price);
   const now = new Date().toISOString();
-  const fallbackThumb = DEFAULT_THUMB_BY_CATEGORY[body.categoryId] || '/assets/thumbs/accessory.svg';
+  const fallbackThumb = DEFAULT_THUMB_BY_CATEGORY[body.categoryId] || '/api/thumbs/accessory.svg';
 
   const newProduct = {
     id: `prd-${Date.now().toString(36)}-${crypto.randomBytes(2).toString('hex')}`,
@@ -515,7 +686,8 @@ app.post('/api/products', requireAuth, (req, res) => {
     quantity,
     status: resolveProductStatus(quantity),
     description: body.description ? String(body.description).trim() : '',
-    imageUrl: body.imageUrl && String(body.imageUrl).trim() ? String(body.imageUrl).trim() : fallbackThumb,
+    imageUrl:
+      body.imageUrl && String(body.imageUrl).trim() ? String(body.imageUrl).trim() : fallbackThumb,
     createdAt: now,
     updatedAt: now,
   };
@@ -530,7 +702,12 @@ function handleUpdateProduct(req, res, isPartial) {
   const db = loadDb();
   const index = db.products.findIndex((p) => p.id === req.params.id);
   if (index === -1) {
-    return sendError(res, 404, 'PRODUCT_NOT_FOUND', `Không tìm thấy sản phẩm với mã "${req.params.id}".`);
+    return sendError(
+      res,
+      404,
+      'PRODUCT_NOT_FOUND',
+      `Không tìm thấy sản phẩm với mã "${req.params.id}".`
+    );
   }
 
   const body = req.body || {};
@@ -572,18 +749,23 @@ app.delete('/api/products/:id', requireAuth, (req, res) => {
   const db = loadDb();
   const exists = db.products.find((p) => p.id === req.params.id);
   if (!exists) {
-    return sendError(res, 404, 'PRODUCT_NOT_FOUND', `Không tìm thấy sản phẩm với mã "${req.params.id}".`);
+    return sendError(
+      res,
+      404,
+      'PRODUCT_NOT_FOUND',
+      `Không tìm thấy sản phẩm với mã "${req.params.id}".`
+    );
   }
   db.products = db.products.filter((p) => p.id !== req.params.id);
   saveDb(db);
   return sendSuccess(res, { id: req.params.id }, `Đã xóa sản phẩm "${exists.name}" thành công`);
 });
 
-// Reset seed data endpoint (useful for QA/resetting demo)
 app.post('/api/system/reset', (_req, res) => {
   const current = loadDb();
   const fresh = createInitialSeed();
   fresh.sessions = current.sessions || [];
+  fresh.revokedTokens = current.revokedTokens || [];
   saveDb(fresh);
   return sendSuccess(res, { totalProducts: fresh.products.length }, 'Đã khôi phục dữ liệu mẫu ban đầu');
 });
@@ -592,7 +774,11 @@ app.use((_req, res) => {
   return sendError(res, 404, 'ROUTE_NOT_FOUND', 'Endpoint API không tồn tại.');
 });
 
-app.listen(PORT, () => {
-  loadDb();
-  console.log(`[API Server] Đang chạy tại http://localhost:${PORT}/api`);
-});
+if (!IS_VERCEL) {
+  app.listen(PORT, () => {
+    loadDb();
+    console.log(`[API Server] Đang chạy tại http://localhost:${PORT}/api`);
+  });
+}
+
+export default app;

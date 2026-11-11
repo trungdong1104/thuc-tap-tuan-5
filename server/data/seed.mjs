@@ -58,7 +58,7 @@ export function createInitialSeed() {
       price: 28990000,
       quantity: 15,
       description: 'Chip A17 Pro mạnh mẽ, khung viền Titan chuẩn hàng không, camera 48MP chuyên nghiệp.',
-      imageUrl: '/assets/thumbs/phone.svg',
+      imageUrl: '/api/thumbs/phone.svg',
       createdAt: '2024-04-10T09:00:00.000Z',
     },
     {
@@ -68,7 +68,7 @@ export function createInitialSeed() {
       price: 24990000,
       quantity: 8,
       description: 'Thiết kế siêu mỏng nhẹ, chip Apple M2 8 nhân, màn hình Liquid Retina 13.6 inch.',
-      imageUrl: '/assets/thumbs/laptop.svg',
+      imageUrl: '/api/thumbs/laptop.svg',
       createdAt: '2024-04-09T09:00:00.000Z',
     },
     {
@@ -78,7 +78,7 @@ export function createInitialSeed() {
       price: 6490000,
       quantity: 20,
       description: 'Chống ồn chủ động ANC thế hệ mới, âm thanh không gian cá nhân hóa, cổng USB-C.',
-      imageUrl: '/assets/thumbs/earbuds.svg',
+      imageUrl: '/api/thumbs/earbuds.svg',
       createdAt: '2024-04-08T09:00:00.000Z',
     },
     {
@@ -88,7 +88,7 @@ export function createInitialSeed() {
       price: 10990000,
       quantity: 4,
       description: 'Màn hình Liquid Retina 10.9 inch toàn màn hình, chip A14 Bionic, hỗ trợ Apple Pencil.',
-      imageUrl: '/assets/thumbs/tablet.svg',
+      imageUrl: '/api/thumbs/tablet.svg',
       createdAt: '2024-04-07T09:00:00.000Z',
     },
     {
@@ -98,7 +98,7 @@ export function createInitialSeed() {
       price: 10490000,
       quantity: 0,
       description: 'Chip S9 SiP với thao tác chạm hai lần tiện lợi, màn hình sáng 2000 nits.',
-      imageUrl: '/assets/thumbs/watch.svg',
+      imageUrl: '/api/thumbs/watch.svg',
       createdAt: '2024-04-06T09:00:00.000Z',
     },
     {
@@ -108,7 +108,7 @@ export function createInitialSeed() {
       price: 31990000,
       quantity: 12,
       description: 'Tích hợp Galaxy AI, bút S Pen nhạy bén, camera zoom quang học 5x và khung Titan.',
-      imageUrl: '/assets/thumbs/phone.svg',
+      imageUrl: '/api/thumbs/phone.svg',
       createdAt: '2024-04-05T09:00:00.000Z',
     },
     {
@@ -118,7 +118,7 @@ export function createInitialSeed() {
       price: 39990000,
       quantity: 5,
       description: 'Chip Apple M3 hiệu năng cao, màn hình Liquid Retina XDR 120Hz, thời lượng pin 22 giờ.',
-      imageUrl: '/assets/thumbs/laptop.svg',
+      imageUrl: '/api/thumbs/laptop.svg',
       createdAt: '2024-04-04T09:00:00.000Z',
     },
     {
@@ -128,7 +128,7 @@ export function createInitialSeed() {
       price: 2490000,
       quantity: 18,
       description: 'Bàn phím cơ không dây QMK/VIA, layout 75% nhỏ gọn, hot-swappable switch.',
-      imageUrl: '/assets/thumbs/accessory.svg',
+      imageUrl: '/api/thumbs/accessory.svg',
       createdAt: '2024-04-03T09:00:00.000Z',
     },
     {
@@ -138,7 +138,7 @@ export function createInitialSeed() {
       price: 28490000,
       quantity: 7,
       description: 'Màn hình Ultra Retina XDR Tandem OLED siêu mỏng, sức mạnh chip Apple M4.',
-      imageUrl: '/assets/thumbs/tablet.svg',
+      imageUrl: '/api/thumbs/tablet.svg',
       createdAt: '2024-04-02T09:00:00.000Z',
     },
     {
@@ -148,7 +148,7 @@ export function createInitialSeed() {
       price: 11290000,
       quantity: 6,
       description: 'Đồng hồ GPS chạy bộ chuyên nghiệp với màn hình AMOLED rực rỡ và phân tích phục hồi.',
-      imageUrl: '/assets/thumbs/watch.svg',
+      imageUrl: '/api/thumbs/watch.svg',
       createdAt: '2024-04-01T09:00:00.000Z',
     },
     {
@@ -158,7 +158,7 @@ export function createInitialSeed() {
       price: 21490000,
       quantity: 14,
       description: 'Ống kính Leica Summilux sắc nét, Snapdragon 8 Gen 3, sạc nhanh HyperCharge 90W.',
-      imageUrl: '/assets/thumbs/phone.svg',
+      imageUrl: '/api/thumbs/phone.svg',
       createdAt: '2024-03-31T09:00:00.000Z',
     },
     {
@@ -168,7 +168,7 @@ export function createInitialSeed() {
       price: 36500000,
       quantity: 3,
       description: 'Vi xử lý Intel Core Ultra 7, màn hình OLED 3K cảm ứng, thiết kế nhôm nguyên khối.',
-      imageUrl: '/assets/thumbs/laptop.svg',
+      imageUrl: '/api/thumbs/laptop.svg',
       createdAt: '2024-03-30T09:00:00.000Z',
     },
     {
@@ -178,7 +178,7 @@ export function createInitialSeed() {
       price: 2390000,
       quantity: 25,
       description: 'Cuộn điện từ MagSpeed siêu êm, cảm biến 8000 DPI hoạt động trên mặt kính.',
-      imageUrl: '/assets/thumbs/accessory.svg',
+      imageUrl: '/api/thumbs/accessory.svg',
       createdAt: '2024-03-29T09:00:00.000Z',
     },
     {
@@ -188,7 +188,7 @@ export function createInitialSeed() {
       price: 18990000,
       quantity: 9,
       description: 'Màn hình Dynamic AMOLED 2X 11 inch kháng nước IP68, đi kèm bút S Pen.',
-      imageUrl: '/assets/thumbs/tablet.svg',
+      imageUrl: '/api/thumbs/tablet.svg',
       createdAt: '2024-03-28T09:00:00.000Z',
     },
     {
@@ -198,7 +198,7 @@ export function createInitialSeed() {
       price: 6290000,
       quantity: 0,
       description: 'Theo dõi giấc ngủ chuyên sâu, phân tích thành phần cơ thể BIA, viền bezel mỏng.',
-      imageUrl: '/assets/thumbs/watch.svg',
+      imageUrl: '/api/thumbs/watch.svg',
       createdAt: '2024-03-27T09:00:00.000Z',
     },
     {
@@ -208,7 +208,7 @@ export function createInitialSeed() {
       price: 19490000,
       quantity: 11,
       description: 'Màn hình lớn 6.7 inch Super Retina XDR, thời lượng pin ấn tượng cả ngày.',
-      imageUrl: '/assets/thumbs/phone.svg',
+      imageUrl: '/api/thumbs/phone.svg',
       createdAt: '2024-03-26T09:00:00.000Z',
     },
     {
@@ -218,7 +218,7 @@ export function createInitialSeed() {
       price: 41990000,
       quantity: 4,
       description: 'Laptop doanh nhân siêu bền chuẩn quân đội, trọng lượng chỉ 1.12kg.',
-      imageUrl: '/assets/thumbs/laptop.svg',
+      imageUrl: '/api/thumbs/laptop.svg',
       createdAt: '2024-03-25T09:00:00.000Z',
     },
     {
@@ -228,7 +228,7 @@ export function createInitialSeed() {
       price: 990000,
       quantity: 32,
       description: 'Công nghệ GaN II nhỏ gọn, 3 cổng sạc tốc độ cao cho laptop, tablet và điện thoại.',
-      imageUrl: '/assets/thumbs/accessory.svg',
+      imageUrl: '/api/thumbs/accessory.svg',
       createdAt: '2024-03-24T09:00:00.000Z',
     },
     {
@@ -238,7 +238,7 @@ export function createInitialSeed() {
       price: 8990000,
       quantity: 13,
       description: 'Màn hình WQHD+ 144Hz mượt mà, chip Snapdragon 870, 4 loa Dolby Atmos.',
-      imageUrl: '/assets/thumbs/tablet.svg',
+      imageUrl: '/api/thumbs/tablet.svg',
       createdAt: '2024-03-23T09:00:00.000Z',
     },
     {
@@ -248,7 +248,7 @@ export function createInitialSeed() {
       price: 20990000,
       quantity: 2,
       description: 'Vỏ Titanium 49mm siêu bền, GPS băng tần kép, thời lượng pin đến 72 giờ.',
-      imageUrl: '/assets/thumbs/watch.svg',
+      imageUrl: '/api/thumbs/watch.svg',
       createdAt: '2024-03-22T09:00:00.000Z',
     },
     {
@@ -258,7 +258,7 @@ export function createInitialSeed() {
       price: 17990000,
       quantity: 10,
       description: 'Hệ thống camera Hasselblad chân dung chuyên sâu, màn hình AMOLED 120Hz.',
-      imageUrl: '/assets/thumbs/phone.svg',
+      imageUrl: '/api/thumbs/phone.svg',
       createdAt: '2024-03-21T09:00:00.000Z',
     },
     {
@@ -268,7 +268,7 @@ export function createInitialSeed() {
       price: 44990000,
       quantity: 6,
       description: 'Laptop gaming sáng tạo mỏng nhẹ với RTX 4060 và màn hình ROG Nebula OLED.',
-      imageUrl: '/assets/thumbs/laptop.svg',
+      imageUrl: '/api/thumbs/laptop.svg',
       createdAt: '2024-03-20T09:00:00.000Z',
     },
     {
@@ -278,7 +278,7 @@ export function createInitialSeed() {
       price: 7990000,
       quantity: 9,
       description: 'Tai nghe chụp tai chống ồn hàng đầu với 8 micro và âm thanh Hi-Res Audio.',
-      imageUrl: '/assets/thumbs/earbuds.svg',
+      imageUrl: '/api/thumbs/earbuds.svg',
       createdAt: '2024-03-19T09:00:00.000Z',
     },
     {
@@ -288,7 +288,7 @@ export function createInitialSeed() {
       price: 16990000,
       quantity: 16,
       description: 'Chip M2 mạnh mẽ, hỗ trợ Apple Pencil Pro và Wi-Fi 6E siêu nhanh.',
-      imageUrl: '/assets/thumbs/tablet.svg',
+      imageUrl: '/api/thumbs/tablet.svg',
       createdAt: '2024-03-18T09:00:00.000Z',
     },
     {
@@ -298,7 +298,7 @@ export function createInitialSeed() {
       price: 4990000,
       quantity: 11,
       description: 'Thiết kế bát giác thanh lịch, pin lên tới 14 ngày, hỗ trợ hơn 100 chế độ tập luyện.',
-      imageUrl: '/assets/thumbs/watch.svg',
+      imageUrl: '/api/thumbs/watch.svg',
       createdAt: '2024-03-17T09:00:00.000Z',
     },
     {
@@ -308,7 +308,7 @@ export function createInitialSeed() {
       price: 19990000,
       quantity: 0,
       description: 'Điện thoại màn hình gập nhỏ gọn, màn hình phụ Flex Window 3.4 inch tiện ích.',
-      imageUrl: '/assets/thumbs/phone.svg',
+      imageUrl: '/api/thumbs/phone.svg',
       createdAt: '2024-03-16T09:00:00.000Z',
     },
     {
@@ -318,7 +318,7 @@ export function createInitialSeed() {
       price: 38490000,
       quantity: 7,
       description: 'Laptop xoay gập 2-in-1 cao cấp, màn hình OLED 2.8K cảm ứng 120Hz.',
-      imageUrl: '/assets/thumbs/laptop.svg',
+      imageUrl: '/api/thumbs/laptop.svg',
       createdAt: '2024-03-15T09:00:00.000Z',
     },
     {
@@ -328,7 +328,7 @@ export function createInitialSeed() {
       price: 850000,
       quantity: 3,
       description: 'Hỗ trợ HDMI 4K60Hz, Power Delivery 100W, đầu đọc thẻ SD/TF và cổng mạng LAN.',
-      imageUrl: '/assets/thumbs/accessory.svg',
+      imageUrl: '/api/thumbs/accessory.svg',
       createdAt: '2024-03-14T09:00:00.000Z',
     },
   ];
